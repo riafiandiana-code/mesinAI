@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .key
+mcp_servers.json
 
 # Python
 __pycache__/

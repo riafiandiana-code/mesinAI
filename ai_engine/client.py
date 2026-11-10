@@ -66,7 +66,7 @@ class CustomAIClient:
 
     def chat(
         self,
-        messages: Optional[List[Dict[str, str]]] = None,
+        messages: Optional[List[Dict[str, Any]]] = None,
         user_message: Optional[str] = None,
         system_prompt: Optional[str] = None,
         prompt_template: Optional[str] = None,
@@ -75,6 +75,8 @@ class CustomAIClient:
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[Any] = None,
         extra_headers: Optional[Dict[str, str]] = None,
     ) -> AIResponse:
         """
@@ -116,25 +118,41 @@ class CustomAIClient:
         else:
             raise ValueError("Harap sediakan 'messages' atau 'user_message'.")
 
+        selected_model = (model or self.config.model or "").strip()
+        if not selected_model:
+            try:
+                available = self.list_models()
+                if available:
+                    selected_model = available[0]
+            except Exception:
+                pass
+
         # Validasi struktur input menggunakan Pydantic
         chat_messages = [ChatMessage(**m) for m in final_messages]
         validated_request = AIRequest(
             messages=chat_messages,
-            model=model or self.config.model,
+            model=selected_model or None,
             temperature=temperature,
             max_tokens=max_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
         )
 
         target_url = self._build_url(endpoint_path)
         headers = self._get_headers(extra_headers)
 
         payload: Dict[str, Any] = {
-            "model": validated_request.model,
-            "messages": [m.model_dump() for m in validated_request.messages],
+            "messages": [m.model_dump(exclude_none=True) for m in validated_request.messages],
             "temperature": validated_request.temperature,
         }
+        if validated_request.model:
+            payload["model"] = validated_request.model
         if validated_request.max_tokens is not None:
             payload["max_tokens"] = validated_request.max_tokens
+        if validated_request.tools:
+            payload["tools"] = validated_request.tools
+            if validated_request.tool_choice is not None:
+                payload["tool_choice"] = validated_request.tool_choice
 
         try:
             response = self.session.post(
@@ -171,6 +189,7 @@ class CustomAIClient:
 
         # Ekstraksi respons standar (OpenAI style atau format umum)
         content = ""
+        tool_calls = None
         prompt_tokens = None
         completion_tokens = None
 
@@ -179,7 +198,8 @@ class CustomAIClient:
             if "message" in choice:
                 msg = choice["message"]
                 content = msg.get("content") or ""
-                if not content and msg.get("reasoning_content"):
+                tool_calls = msg.get("tool_calls") or None
+                if not content and not tool_calls and msg.get("reasoning_content"):
                     content = msg["reasoning_content"]
             elif "text" in choice:
                 content = choice["text"]
@@ -196,6 +216,7 @@ class CustomAIClient:
 
         return AIResponse(
             content=content,
+            tool_calls=tool_calls,
             model=data.get("model", validated_request.model),
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,

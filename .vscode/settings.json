@@ -1,0 +1,7 @@
+{
+    "chat.agent.enabled": true,
+    "python.defaultInterpreterPath": "python",
+    "files.exclude": {
+        "**/__pycache__": true
+    }
+}

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "filesystem-contoh": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": {},
+      "disabled": true
+    }
+  }
+}
