@@ -1,0 +1,17 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "AI-Provider-Routing-Endpoint",
+			"type": "shell",
+			"command": "python3 -m http.server 8000",
+			"args": [
+				"--bind",
+				"localhost"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
